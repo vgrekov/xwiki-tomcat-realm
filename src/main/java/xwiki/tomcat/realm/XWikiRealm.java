@@ -126,7 +126,7 @@ public class XWikiRealm extends RealmBase {
 				}
 			}
 
-			if (compareCredentials(passwordActual, passwordExpected)) {
+			if (passwordActual.equals(passwordExpected)) {
 				List<String> roles = DbUtil.getGroups(this, username);
 				return new GenericPrincipal(username, password, roles);
 			}
