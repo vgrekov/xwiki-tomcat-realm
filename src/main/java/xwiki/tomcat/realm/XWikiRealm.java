@@ -13,6 +13,7 @@ import org.apache.catalina.realm.GenericPrincipal;
 import org.apache.catalina.realm.RealmBase;
 
 import xwiki.tomcat.util.DbUtil;
+import xwiki.tomcat.util.StringUtil;
 
 public class XWikiRealm extends RealmBase {
 
@@ -83,7 +84,7 @@ public class XWikiRealm extends RealmBase {
 
 	@Override
 	protected synchronized String getPassword(String username) {
-		if (username == null) {
+		if (StringUtil.isBlank(username)) {
 			return null;
 		}
 
@@ -92,7 +93,7 @@ public class XWikiRealm extends RealmBase {
 
 	@Override
 	protected synchronized Principal getPrincipal(String username) {
-		if (username == null) {
+		if (StringUtil.isBlank(username)) {
 			return null;
 		}
 
@@ -107,29 +108,31 @@ public class XWikiRealm extends RealmBase {
 
 	@Override
 	public synchronized Principal authenticate(String username, String password) {
-		if (username == null || password == null) {
+		if (StringUtil.isBlank(username) || StringUtil.isBlank(password)) {
 			return null;
 		}
 
 		String passwordActual = password;
 		String passwordExpected = getPassword(username);
-		String[] parts = passwordExpected.split(":");
-		if (parts.length > 0) {
-			String type = parts[0];
-			if ("hash".equals(type)) {
-				String algorithm = parts[1];
-				String salt = parts[2];
-				passwordExpected = parts[3];
-				passwordActual = calculateHash(password, algorithm, salt);
+		if (!StringUtil.isBlank(passwordExpected)) {
+			String[] parts = passwordExpected.split(":");
+			if (parts.length > 0) {
+				String type = parts[0];
+				if ("hash".equals(type)) {
+					String algorithm = parts[1];
+					String salt = parts[2];
+					passwordExpected = parts[3];
+					passwordActual = calculateHash(password, algorithm, salt);
+				}
+			}
+
+			if (compareCredentials(passwordActual, passwordExpected)) {
+				List<String> roles = DbUtil.getGroups(this, username);
+				return new GenericPrincipal(username, password, roles);
 			}
 		}
 
-		if (compareCredentials(passwordActual, passwordExpected)) {
-			List<String> roles = DbUtil.getGroups(this, username);
-			return new GenericPrincipal(username, password, roles);
-		} else {
-			return null;
-		}
+		return null;
 	}
 
 	private String calculateHash(String password, String algorithm, String salt) {
